@@ -1,0 +1,216 @@
+{
+  "label": "BookSQL-derived audited task subset v1; not original benchmark performance",
+  "database_sha256": "89f890e3d55db08fe7f32fcfead6f56e22a3ab2615f9fc382f30e29ce9b94763",
+  "validation_sha256": "85cf223e390f3f769d94fcaeac775ab978f7a1af0436db563a46b6f1b1783682",
+  "verification": "Reference SQL cross-checked using Python grouping/filtering over raw transaction rows and account map. Internal consistency, not external accounting audit.",
+  "numeric_scoring": "Compare full-precision values within absolute 1e-6 for this fixed snapshot; displayed money rounded to 2 decimals, half up. IDs and order exact.",
+  "tasks": [
+    {
+      "id": "B03",
+      "source_val_index_zero_based": 16,
+      "original": {
+        "Query": "What was the average invoice value for Manufacturing peppermint oil in Last year?",
+        "SQL": "select avg(credit) from master_txn_table where transaction_type = 'invoice' and instr(account,\"Manufacturing peppermint oil\") and transaction_date BETWEEN date(current_date,  'start of year', '-1 days', 'start of year') AND date(current_date,  'start of year', '-1 days') ",
+        "Levels": "medium",
+        "split": "dev"
+      },
+      "question": "For business 23 in calendar year 2022, what is the average full invoice amount among invoices containing the manufacturing peppermint oil account?",
+      "business_meaning": "Identify qualifying invoices, deduplicate, then average their full amount; not just peppermint line revenue.",
+      "changes": [
+        "Fix business, calendar year and account spelling",
+        "Replace AVG(credit) with invoice-level AVG(amount)",
+        "Explicitly define full-invoice amount"
+      ],
+      "assumptions": [
+        "Each qualifying invoice has a consistent amount across selected rows, checked during construction."
+      ],
+      "reference_sql": "SELECT COUNT(*) AS invoice_count, AVG(amount) AS average_invoice_amount FROM (SELECT DISTINCT businessID,transaction_id,amount FROM master_txn_table WHERE businessID=23 AND transaction_type='invoice' AND account='manufacturing peppermint oil' AND transaction_date BETWEEN '2022-01-01' AND '2022-12-31')",
+      "sql_result": [
+        {
+          "invoice_count": 22,
+          "average_invoice_amount": 18948.31
+        }
+      ],
+      "trusted_answer": {
+        "invoice_count": 22,
+        "average_invoice_amount": "18948.31"
+      },
+      "independent_check_passed": true
+    },
+    {
+      "id": "B04",
+      "source_val_index_zero_based": 2,
+      "original": {
+        "Query": "Compare sales by customer Last fiscal year",
+        "SQL": "select customers, sum(credit) from master_txn_table where account in ('Income','Other Income') and transaction_date BETWEEN date(current_date, '-3 months', 'start of year','-1 years', '+3 months') AND date(current_date, '-3 months', 'start of year','-1 years', '+3 months', '+1 years', '-1 days')  group by customers ",
+        "Levels": "hard",
+        "split": "dev"
+      },
+      "question": "For business 25 in 2022-04-01 through 2023-03-31, list the top three named customers by gross credits on uniquely classified income accounts, from invoices or deposits. Break ties by customer name.",
+      "business_meaning": "Group customer-tagged income credits; not cash collected or profit.",
+      "changes": [
+        "Set business and fixed fiscal period",
+        "Use account types via composite join, not literal account names",
+        "Define included transaction types and missing-name exclusions",
+        "Return top three rather than all customers",
+        "Deduplicate account mappings and exclude conflicting account classifications"
+      ],
+      "assumptions": [
+        "Gross credits without debit offsets; customer identity is the stored name within business 25."
+      ],
+      "reference_sql": "SELECT t.customers,SUM(t.credit) AS gross_income_credit FROM master_txn_table t JOIN (SELECT businessID,account_name,MIN(account_type) AS account_type FROM chart_of_accounts GROUP BY businessID,account_name HAVING COUNT(DISTINCT account_type)=1) a ON t.businessID=a.businessID AND t.account=a.account_name WHERE t.businessID=25 AND t.transaction_date BETWEEN '2022-04-01' AND '2023-03-31' AND t.transaction_type IN ('invoice','deposit') AND a.account_type IN ('income','other income') AND t.customers IS NOT NULL AND t.customers NOT IN ('','--','nan') GROUP BY t.customers ORDER BY gross_income_credit DESC,t.customers ASC LIMIT 3",
+      "sql_result": [
+        {
+          "Customers": "amanda ware",
+          "gross_income_credit": 60047.20000000001
+        },
+        {
+          "Customers": "ashley jensen",
+          "gross_income_credit": 60047.20000000001
+        },
+        {
+          "Customers": "benjamin floyd",
+          "gross_income_credit": 60047.20000000001
+        }
+      ],
+      "trusted_answer": [
+        {
+          "customer": "amanda ware",
+          "gross_income_credit": "60047.20"
+        },
+        {
+          "customer": "ashley jensen",
+          "gross_income_credit": "60047.20"
+        },
+        {
+          "customer": "benjamin floyd",
+          "gross_income_credit": "60047.20"
+        }
+      ],
+      "independent_check_passed": true
+    },
+    {
+      "id": "B06",
+      "source_val_index_zero_based": 4,
+      "original": {
+        "Query": "Give me list of invoices which are due in next [number] days",
+        "SQL": "select distinct transaction_id from master_txn_table where due_date <= date('now,'+[number] days') and AR_Paid = 'unpaid'",
+        "Levels": "medium",
+        "split": "dev"
+      },
+      "question": "As of 2023-04-01, for business 25, list distinct recorded invoices with positive stored open balance due in the next 30 days (2023-04-02 through 2023-05-01), ordered by transaction ID.",
+      "business_meaning": "Use a hypothetical reporting cutoff for dates and the stored balance; do not reconstruct historical payment state.",
+      "changes": [
+        "Fill number=30 and reference date",
+        "Fix date syntax and require future lower bound",
+        "Only invoices issued on or before cutoff",
+        "Use positive stored balance instead of contradictory AR_paid",
+        "Specify business and ordering"
+      ],
+      "assumptions": [
+        "Stored open_balance is a snapshot value; payment history at cutoff is unavailable."
+      ],
+      "reference_sql": "SELECT DISTINCT transaction_id FROM master_txn_table WHERE businessID=25 AND transaction_type='invoice' AND transaction_date<='2023-04-01' AND open_balance>0 AND due_date>'2023-04-01' AND due_date<='2023-05-01' ORDER BY transaction_id",
+      "sql_result": [
+        {
+          "Transaction_ID": 144854
+        },
+        {
+          "Transaction_ID": 145140
+        },
+        {
+          "Transaction_ID": 145799
+        },
+        {
+          "Transaction_ID": 146039
+        },
+        {
+          "Transaction_ID": 146708
+        },
+        {
+          "Transaction_ID": 146851
+        },
+        {
+          "Transaction_ID": 146872
+        },
+        {
+          "Transaction_ID": 147006
+        },
+        {
+          "Transaction_ID": 147151
+        },
+        {
+          "Transaction_ID": 148119
+        },
+        {
+          "Transaction_ID": 148170
+        },
+        {
+          "Transaction_ID": 148221
+        },
+        {
+          "Transaction_ID": 148352
+        },
+        {
+          "Transaction_ID": 148829
+        },
+        {
+          "Transaction_ID": 149000
+        },
+        {
+          "Transaction_ID": 149169
+        },
+        {
+          "Transaction_ID": 149318
+        },
+        {
+          "Transaction_ID": 149321
+        },
+        {
+          "Transaction_ID": 149441
+        },
+        {
+          "Transaction_ID": 150062
+        },
+        {
+          "Transaction_ID": 150163
+        },
+        {
+          "Transaction_ID": 150285
+        },
+        {
+          "Transaction_ID": 150636
+        }
+      ],
+      "trusted_answer": {
+        "invoice_count": 23,
+        "transaction_ids": [
+          144854,
+          145140,
+          145799,
+          146039,
+          146708,
+          146851,
+          146872,
+          147006,
+          147151,
+          148119,
+          148170,
+          148221,
+          148352,
+          148829,
+          149000,
+          149169,
+          149318,
+          149321,
+          149441,
+          150062,
+          150163,
+          150285,
+          150636
+        ]
+      },
+      "independent_check_passed": true
+    }
+  ]
+}

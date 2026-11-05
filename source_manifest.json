@@ -1,0 +1,8 @@
+{
+  "dataset": "Exploration-Lab/BookSQL",
+  "url": "https://huggingface.co/datasets/Exploration-Lab/BookSQL",
+  "database_path": "BookSQL/accounting.sqlite",
+  "database_sha256": "89f890e3d55db08fe7f32fcfead6f56e22a3ab2615f9fc382f30e29ce9b94763",
+  "validation_sha256": "85cf223e390f3f769d94fcaeac775ab978f7a1af0436db563a46b6f1b1783682",
+  "distribution": "Raw gated source database not bundled; formal experiment observations and derived task definitions included. Obtain source through authorized dataset access."
+}
