@@ -15,6 +15,7 @@ Each task uses five conditions × three strategies × five repetitions. B03 runs
 ## Repository contents
 
 - `README.md`: scope, methods, reproduction and interpretation.
+- `report.tex`: compiled and visually checked report source; main text is two pages, with detailed methods/measurements in Appendix A and three complete 75-run ledgers in Appendix B.
 - `tasks.json`: the three audited questions, original BookSQL validation indices, adaptations, reference SQL and trusted answers.
 - `source_manifest.json`: original database/validation checksums and data access location.
 - `source_code.zip`: exact Python implementations, JSON schemas and generation instructions, retaining their directory structure. Extract to `source/`.
